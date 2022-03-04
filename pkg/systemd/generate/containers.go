@@ -236,7 +236,9 @@ func containerServiceName(ctr *libpod.Container, options entities.GenerateSystem
 	if options.Name {
 		nameOrID = ctr.Name()
 	}
-	serviceName := fmt.Sprintf("%s%s%s", options.ContainerPrefix, options.Separator, nameOrID)
+
+	serviceName := getServiceName(options.ContainerPrefix, options.Separator, nameOrID)
+
 	return nameOrID, serviceName
 }
 
@@ -360,7 +362,9 @@ func executeContainerTemplate(info *containerInfo, options entities.GenerateSyst
 		fs.StringArrayP("env", "e", nil, "")
 		fs.String("sdnotify", "", "")
 		fs.String("restart", "", "")
-		fs.Parse(remainingCmd)
+		if err := fs.Parse(remainingCmd); err != nil {
+			return "", fmt.Errorf("parsing remaining command-line arguments: %w", err)
+		}
 
 		remainingCmd = filterCommonContainerFlags(remainingCmd, fs.NArg())
 		// If the container is in a pod, make sure that the

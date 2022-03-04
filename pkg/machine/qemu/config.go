@@ -1,8 +1,11 @@
+//go:build (amd64 && !windows) || (arm64 && !windows)
 // +build amd64,!windows arm64,!windows
 
 package qemu
 
-import "time"
+import (
+	"time"
+)
 
 type Provider struct{}
 
@@ -35,6 +38,8 @@ type MachineVM struct {
 	RemoteUsername string
 	// Whether this machine should run in a rootful or rootless manner
 	Rootful bool
+	// UID is the numerical id of the user that called machine
+	UID int
 }
 
 type Mount struct {
@@ -56,6 +61,6 @@ type Monitor struct {
 
 var (
 	// defaultQMPTimeout is the timeout duration for the
-	// qmp monitor interactions
+	// qmp monitor interactions.
 	defaultQMPTimeout time.Duration = 2 * time.Second
 )

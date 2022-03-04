@@ -28,20 +28,9 @@ resolution.
 Driver to manage the network. Currently `bridge`, `macvlan` and `ipvlan` are supported. Defaults to `bridge`.
 As rootless the `macvlan` and `ipvlan` driver have no access to the host network interfaces because rootless networking requires a separate network namespace.
 
-#### **--opt**=*option*, **-o**
-
-Set driver specific options.
-
-All drivers accept the `mtu` option. The `mtu` option sets the Maximum Transmission Unit (MTU) and takes an integer value.
-
-Additionally the `bridge` driver supports the following option:
-- `vlan`: This option assign VLAN tag and enables vlan\_filtering. Defaults to none.
-
-The `macvlan` and `ipvlan` driver support the following options:
-- `parent`: The host device which should be used for the macvlan interface. Defaults to the default route interface.
-- `mode`: This option sets the specified ip/macvlan mode on the interface.
-  - Supported values for `macvlan` are `bridge`, `private`, `vepa`, `passthru`. Defaults to `bridge`.
-  - Supported values for `ipvlan` are `l2`, `l3`, `l3s`. Defaults to `l2`.
+Special considerations for the *netavark* backend:
+- The `macvlan` driver requires the `--subnet` option, DHCP is currently not supported.
+- The `ipvlan` driver is not currently supported.
 
 #### **--gateway**
 
@@ -60,19 +49,34 @@ Allocate container IP from a range.  The range must be a complete subnet and in 
 must be used with a *subnet* option. Can be specified multiple times.
 The argument order of the **--subnet**, **--gateway** and **--ip-range** options must match.
 
+#### **--ipv6**
+
+Enable IPv6 (Dual Stack) networking. If not subnets are given it will allocate a ipv4 and ipv6 subnet.
+
 #### **--label**
 
 Set metadata for a network (e.g., --label mykey=value).
+
+#### **--opt**=*option*, **-o**
+
+Set driver specific options.
+
+All drivers accept the `mtu` option. The `mtu` option sets the Maximum Transmission Unit (MTU) and takes an integer value.
+
+Additionally the `bridge` driver supports the following option:
+- `vlan`: This option assign VLAN tag and enables vlan\_filtering. Defaults to none.
+
+The `macvlan` and `ipvlan` driver support the following options:
+- `parent`: The host device which should be used for the macvlan interface. Defaults to the default route interface.
+- `mode`: This option sets the specified ip/macvlan mode on the interface.
+  - Supported values for `macvlan` are `bridge`, `private`, `vepa`, `passthru`. Defaults to `bridge`.
+  - Supported values for `ipvlan` are `l2`, `l3`, `l3s`. Defaults to `l2`.
 
 #### **--subnet**
 
 The subnet in CIDR notation. Can be specified multiple times to allocate more than one subnet for this network.
 The argument order of the **--subnet**, **--gateway** and **--ip-range** options must match.
 This is useful to set a static ipv4 and ipv6 subnet.
-
-#### **--ipv6**
-
-Enable IPv6 (Dual Stack) networking. If not subnets are given it will allocate a ipv4 and ipv6 subnet.
 
 ## EXAMPLE
 
@@ -114,7 +118,7 @@ podman4
 
 Create a Macvlan based network using the host interface eth0. Macvlan networks can only be used as root.
 ```
-# podman network create -d macvlan -o parent=eth0 newnet
+# podman network create -d macvlan -o parent=eth0 --subnet 192.5.0.0/16 newnet
 newnet
 ```
 

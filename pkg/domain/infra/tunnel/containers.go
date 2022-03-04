@@ -390,7 +390,7 @@ func (ic *ContainerEngine) ContainerRestore(ctx context.Context, namesOrIds []st
 	options.WithPublishPorts(opts.PublishPorts)
 
 	if opts.Import != "" {
-		options.WithImportAchive(opts.Import)
+		options.WithImportArchive(opts.Import)
 		report, err := containers.Restore(ic.ClientCtx, "", options)
 		return []*entities.RestoreReport{report}, err
 	}
@@ -840,7 +840,7 @@ func (ic *ContainerEngine) ContainerRun(ctx context.Context, opts entities.Conta
 	if eventsErr != nil || lastEvent == nil {
 		logrus.Errorf("Cannot get exit code: %v", err)
 		report.ExitCode = define.ExecErrorCodeNotFound
-		return &report, nil // compat with local client
+		return &report, nil // nolint: nilerr
 	}
 
 	report.ExitCode = lastEvent.ContainerExitCode
@@ -938,7 +938,7 @@ func (ic *ContainerEngine) ContainerStat(ctx context.Context, nameOrID string, p
 	return containers.Stat(ic.ClientCtx, nameOrID, path)
 }
 
-// Shutdown Libpod engine
+// Shutdown Libpod engine.
 func (ic *ContainerEngine) Shutdown(_ context.Context) {
 }
 
@@ -949,7 +949,7 @@ func (ic *ContainerEngine) ContainerStats(ctx context.Context, namesOrIds []stri
 	return containers.Stats(ic.ClientCtx, namesOrIds, new(containers.StatsOptions).WithStream(options.Stream).WithInterval(options.Interval))
 }
 
-// ShouldRestart reports back whether the container will restart
+// ShouldRestart reports back whether the container will restart.
 func (ic *ContainerEngine) ShouldRestart(_ context.Context, id string) (bool, error) {
 	return containers.ShouldRestart(ic.ClientCtx, id, nil)
 }

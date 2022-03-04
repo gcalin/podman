@@ -249,6 +249,10 @@ type EngineConfig struct {
 	// EventsLogFilePath is where the events log is stored.
 	EventsLogFilePath string `toml:"events_logfile_path,omitempty"`
 
+	// EventsLogFileMaxSize sets the maximum size for the events log. When the limit is exceeded,
+	// the logfile is rotated and the old one is deleted.
+	EventsLogFileMaxSize uint64 `toml:"events_logfile_max_size,omitempty"`
+
 	// EventsLogger determines where events should be logged.
 	EventsLogger string `toml:"events_logger,omitempty"`
 
@@ -405,6 +409,10 @@ type EngineConfig struct {
 	// StopTimeout is the number of seconds to wait for container to exit
 	// before sending kill signal.
 	StopTimeout uint `toml:"stop_timeout,omitempty,omitzero"`
+
+	// ExitCommandDelay is the number of seconds to wait for the exit
+	// command to be send to the API process on the server.
+	ExitCommandDelay uint `toml:"exit_command_delay,omitempty,omitzero"`
 
 	// ImageCopyTmpDir is the default location for storing temporary
 	// container image content,  Can be overridden with the TMPDIR

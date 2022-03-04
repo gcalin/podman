@@ -28,7 +28,7 @@ func (ir *ImageEngine) Exists(_ context.Context, nameOrID string) (*entities.Boo
 }
 
 func (ir *ImageEngine) Remove(ctx context.Context, imagesArg []string, opts entities.ImageRemoveOptions) (*entities.ImageRemoveReport, []error) {
-	options := new(images.RemoveOptions).WithForce(opts.Force).WithAll(opts.All)
+	options := new(images.RemoveOptions).WithForce(opts.Force).WithIgnore(opts.Ignore).WithAll(opts.All)
 	return images.Remove(ir.ClientCtx, imagesArg, options)
 }
 
@@ -230,6 +230,7 @@ func (ir *ImageEngine) Import(ctx context.Context, opts entities.ImageImportOpti
 		f   *os.File
 	)
 	options := new(images.ImportOptions).WithChanges(opts.Changes).WithMessage(opts.Message).WithReference(opts.Reference)
+	options.WithOS(opts.OS).WithArchitecture(opts.Architecture).WithVariant(opts.Variant)
 	if opts.SourceIsURL {
 		options.WithURL(opts.Source)
 	} else {

@@ -173,6 +173,57 @@ func (c *Container) prepare() error {
 	return nil
 }
 
+// isWorkDirSymlink returns true if resolved workdir is symlink or a chain of symlinks,
+// and final resolved target is present either on  volume, mount or inside of container
+// otherwise it returns false. Following function is meant for internal use only and
+// can change at any point of time.
+func (c *Container) isWorkDirSymlink(resolvedPath string) bool {
+	// We cannot create workdir since explicit --workdir is
+	// set in config but workdir could also be a symlink.
+	// If its a symlink lets check if resolved link is present
+	// on the container or not.
+
+	// If we can resolve symlink and resolved link is present on the container
+	// then return nil cause its a valid use-case.
+
+	maxSymLinks := 0
+	for {
+		// Linux only supports a chain of 40 links.
+		// Reference: https://github.com/torvalds/linux/blob/master/include/linux/namei.h#L13
+		if maxSymLinks > 40 {
+			break
+		}
+		resolvedSymlink, err := os.Readlink(resolvedPath)
+		if err != nil {
+			// End sym-link resolution loop.
+			break
+		}
+		if resolvedSymlink != "" {
+			_, resolvedSymlinkWorkdir, err := c.resolvePath(c.state.Mountpoint, resolvedSymlink)
+			if isPathOnVolume(c, resolvedSymlinkWorkdir) || isPathOnBindMount(c, resolvedSymlinkWorkdir) {
+				// Resolved symlink exists on external volume or mount
+				return true
+			}
+			if err != nil {
+				// Could not resolve path so end sym-link resolution loop.
+				break
+			}
+			if resolvedSymlinkWorkdir != "" {
+				resolvedPath = resolvedSymlinkWorkdir
+				_, err := os.Stat(resolvedSymlinkWorkdir)
+				if err == nil {
+					// Symlink resolved successfully and resolved path exists on container,
+					// this is a valid use-case so return nil.
+					logrus.Debugf("Workdir is a symlink with target to %q and resolved symlink exists on container", resolvedSymlink)
+					return true
+				}
+			}
+		}
+		maxSymLinks++
+	}
+	return false
+}
+
 // resolveWorkDir resolves the container's workdir and, depending on the
 // configuration, will create it, or error out if it does not exist.
 // Note that the container must be mounted before.
@@ -205,6 +256,11 @@ func (c *Container) resolveWorkDir() error {
 		// the path exists on the container.
 		if err != nil {
 			if os.IsNotExist(err) {
+				// If resolved Workdir path gets marked as a valid symlink,
+				// return nil cause this is valid use-case.
+				if c.isWorkDirSymlink(resolvedWorkdir) {
+					return nil
+				}
 				return errors.Errorf("workdir %q does not exist on container %s", workdir, c.ID())
 			}
 			// This might be a serious error (e.g., permission), so
@@ -1755,6 +1811,17 @@ func (c *Container) getRootNetNsDepCtr() (depCtr *Container, err error) {
 	return depCtr, nil
 }
 
+// Ensure standard bind mounts are mounted into all root directories (including chroot directories)
+func (c *Container) mountIntoRootDirs(mountName string, mountPath string) error {
+	c.state.BindMounts[mountName] = mountPath
+
+	for _, chrootDir := range c.config.ChrootDirs {
+		c.state.BindMounts[filepath.Join(chrootDir, mountName)] = mountPath
+	}
+
+	return nil
+}
+
 // Make standard bind mounts to include in the container
 func (c *Container) makeBindMounts() error {
 	if err := os.Chown(c.state.RunDir, c.RootUID(), c.RootGID()); err != nil {
@@ -1808,7 +1875,11 @@ func (c *Container) makeBindMounts() error {
 			// If it doesn't, don't copy them
 			resolvPath, exists := bindMounts["/etc/resolv.conf"]
 			if !c.config.UseImageResolvConf && exists {
-				c.state.BindMounts["/etc/resolv.conf"] = resolvPath
+				err := c.mountIntoRootDirs("/etc/resolv.conf", resolvPath)
+
+				if err != nil {
+					return errors.Wrapf(err, "error assigning mounts to container %s", c.ID())
+				}
 			}
 
 			// check if dependency container has an /etc/hosts file.
@@ -1828,7 +1899,11 @@ func (c *Container) makeBindMounts() error {
 				depCtr.lock.Unlock()
 
 				// finally, save it in the new container
-				c.state.BindMounts["/etc/hosts"] = hostsPath
+				err := c.mountIntoRootDirs("/etc/hosts", hostsPath)
+
+				if err != nil {
+					return errors.Wrapf(err, "error assigning mounts to container %s", c.ID())
+				}
 			}
 
 			if !hasCurrentUserMapped(c) {
@@ -1845,7 +1920,11 @@ func (c *Container) makeBindMounts() error {
 				if err != nil {
 					return errors.Wrapf(err, "error creating resolv.conf for container %s", c.ID())
 				}
-				c.state.BindMounts["/etc/resolv.conf"] = newResolv
+				err = c.mountIntoRootDirs("/etc/resolv.conf", newResolv)
+
+				if err != nil {
+					return errors.Wrapf(err, "error assigning mounts to container %s", c.ID())
+				}
 			}
 
 			if !c.config.UseImageHosts {
@@ -2273,7 +2352,11 @@ func (c *Container) updateHosts(path string) error {
 	if err != nil {
 		return err
 	}
-	c.state.BindMounts["/etc/hosts"] = newHosts
+
+	if err = c.mountIntoRootDirs("/etc/hosts", newHosts); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -2504,7 +2587,7 @@ func (c *Container) generateUserGroupEntry(addedGID int) (string, int, error) {
 
 	gid, err := strconv.ParseUint(group, 10, 32)
 	if err != nil {
-		return "", 0, nil
+		return "", 0, nil // nolint: nilerr
 	}
 
 	if addedGID != 0 && addedGID == int(gid) {
@@ -2657,7 +2740,7 @@ func (c *Container) generateUserPasswdEntry(addedUID int) (string, int, int, err
 	// If a non numeric User, then don't generate passwd
 	uid, err := strconv.ParseUint(userspec, 10, 32)
 	if err != nil {
-		return "", 0, 0, nil
+		return "", 0, 0, nil // nolint: nilerr
 	}
 
 	if addedUID != 0 && int(uid) == addedUID {

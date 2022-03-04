@@ -1088,6 +1088,7 @@ func (ic *ContainerEngine) ContainerLogs(ctx context.Context, containers []strin
 		Until:      options.Until,
 		Tail:       options.Tail,
 		Timestamps: options.Timestamps,
+		Colors:     options.Colors,
 		UseName:    options.Names,
 		WaitGroup:  &wg,
 	}
@@ -1431,12 +1432,7 @@ func (ic *ContainerEngine) ContainerStats(ctx context.Context, namesOrIds []stri
 
 			reportStats := []define.ContainerStats{}
 			for _, ctr := range containers {
-				prev, ok := containerStats[ctr.ID()]
-				if !ok {
-					prev = &define.ContainerStats{}
-				}
-
-				stats, err := ctr.GetContainerStats(prev)
+				stats, err := ctr.GetContainerStats(containerStats[ctr.ID()])
 				if err != nil {
 					cause := errors.Cause(err)
 					if queryAll && (cause == define.ErrCtrRemoved || cause == define.ErrNoSuchCtr || cause == define.ErrCtrStateInvalid) {

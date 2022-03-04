@@ -242,7 +242,8 @@ func generatePodInfo(pod *libpod.Pod, options entities.GenerateSystemdOptions) (
 		nameOrID = pod.Name()
 		ctrNameOrID = infraCtr.Name()
 	}
-	serviceName := fmt.Sprintf("%s%s%s", options.PodPrefix, options.Separator, nameOrID)
+
+	serviceName := getServiceName(options.PodPrefix, options.Separator, nameOrID)
 
 	info := podInfo{
 		ServiceName:       serviceName,
@@ -334,7 +335,9 @@ func executePodTemplate(info *podInfo, options entities.GenerateSystemdOptions) 
 		fs.SetInterspersed(false)
 		fs.String("name", "", "")
 		fs.Bool("replace", false, "")
-		fs.Parse(podCreateArgs)
+		if err := fs.Parse(podCreateArgs); err != nil {
+			return "", fmt.Errorf("parsing remaining command-line arguments: %w", err)
+		}
 
 		hasNameParam := fs.Lookup("name").Changed
 		hasReplaceParam, err := fs.GetBool("replace")

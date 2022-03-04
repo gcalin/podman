@@ -171,10 +171,43 @@ func (ic *ContainerEngine) VolumeMounted(ctx context.Context, nameOrID string) (
 	}
 	mountCount, err := vol.MountCount()
 	if err != nil {
-		return &entities.BoolReport{Value: false}, nil
+		// FIXME: this error should probably be returned
+		return &entities.BoolReport{Value: false}, nil // nolint: nilerr
 	}
 	if mountCount > 0 {
 		return &entities.BoolReport{Value: true}, nil
 	}
 	return &entities.BoolReport{Value: false}, nil
+}
+
+func (ic *ContainerEngine) VolumeMount(ctx context.Context, nameOrIDs []string) ([]*entities.VolumeMountReport, error) {
+	reports := []*entities.VolumeMountReport{}
+	for _, name := range nameOrIDs {
+		report := entities.VolumeMountReport{Id: name}
+		vol, err := ic.Libpod.LookupVolume(name)
+		if err != nil {
+			report.Err = err
+		} else {
+			report.Path, report.Err = vol.Mount()
+		}
+		reports = append(reports, &report)
+	}
+
+	return reports, nil
+}
+
+func (ic *ContainerEngine) VolumeUnmount(ctx context.Context, nameOrIDs []string) ([]*entities.VolumeUnmountReport, error) {
+	reports := []*entities.VolumeUnmountReport{}
+	for _, name := range nameOrIDs {
+		report := entities.VolumeUnmountReport{Id: name}
+		vol, err := ic.Libpod.LookupVolume(name)
+		if err != nil {
+			report.Err = err
+		} else {
+			report.Err = vol.Unmount()
+		}
+		reports = append(reports, &report)
+	}
+
+	return reports, nil
 }

@@ -52,7 +52,7 @@ command to see these containers. External containers can be removed with the
 Add a custom host-to-IP mapping (host:ip)
 
 Add a line to /etc/hosts. The format is hostname:ip. The **--add-host** option
-can be set multiple times.
+can be set multiple times. Conflicts with the --no-hosts option.
 
 #### **--all-platforms**
 
@@ -312,7 +312,7 @@ environment variable.  `export BUILDAH_FORMAT=docker`
 Overrides the first `FROM` instruction within the Containerfile.  If there are multiple
 FROM instructions in a Containerfile, only the first is changed.
 
-**-h**, **--help**
+#### **--help**, **-h**
 
 Print usage statement
 
@@ -320,14 +320,14 @@ Print usage statement
 
 Pass through HTTP Proxy environment variables.
 
+#### **--ignorefile**
+
+Path to an alternative .containerignore file.
+
 #### **--iidfile**=*ImageIDfile*
 
 Write the built image's ID to the file.  When `--platform` is specified more
 than once, attempting to use this option will trigger an error.
-
-#### **--ignorefile**
-
-Path to an alternative .containerignore file.
 
 #### **--ipc**=*how*
 
@@ -431,6 +431,13 @@ considered insecure.
 
 Do not use existing cached images for the container build. Build from the start
 with a new set of cached layers.
+
+#### **--no-hosts**
+
+Do not create _/etc/hosts_ for the container.
+
+By default, Buildah manages _/etc/hosts_, adding the container's own IP address.
+**--no-hosts** disables this, and the image's _/etc/hosts_ will be preserved unmodified. Conflicts with the --add-host option.
 
 #### **--os**=*string*
 
@@ -636,27 +643,6 @@ the user namespace in which `podman` itself is being run should be reused, or
 it can be the path to a user namespace which is already in use by another
 process.
 
-#### **--userns-uid-map**=*mapping*
-
-Directly specifies a UID mapping which should be used to set ownership, at the
-filesystem level, on the working container's contents.
-Commands run when handling `RUN` instructions will default to being run in
-their own user namespaces, configured using the UID and GID maps.
-
-Entries in this map take the form of one or more triples of a starting
-in-container UID, a corresponding starting host-level UID, and the number of
-consecutive IDs which the map entry represents.
-
-This option overrides the *remap-uids* setting in the *options* section of
-/etc/containers/storage.conf.
-
-If this option is not specified, but a global --userns-uid-map setting is
-supplied, settings from the global option will be used.
-
-If none of --userns-uid-map-user, --userns-gid-map-group, or --userns-uid-map
-are specified, but --userns-gid-map is specified, the UID map will be set to
-use the same numeric values as the GID map.
-
 #### **--userns-gid-map**=*mapping*
 
 Directly specifies a GID mapping which should be used to set ownership, at the
@@ -678,21 +664,6 @@ If none of --userns-uid-map-user, --userns-gid-map-group, or --userns-gid-map
 are specified, but --userns-uid-map is specified, the GID map will be set to
 use the same numeric values as the UID map.
 
-#### **--userns-uid-map-user**=*user*
-
-Specifies that a UID mapping which should be used to set ownership, at the
-filesystem level, on the working container's contents, can be found in entries
-in the `/etc/subuid` file which correspond to the specified user.
-Commands run when handling `RUN` instructions will default to being run in
-their own user namespaces, configured using the UID and GID maps.
-If --userns-gid-map-group is specified, but --userns-uid-map-user is not
-specified, `podman` will assume that the specified group name is also a
-suitable user name to use as the default setting for this option.
-
-**NOTE:** When this option is specified by a rootless user, the specified
-mappings are relative to the rootless user namespace in the container, rather
-than being relative to the host as it would be when run rootfull.
-
 #### **--userns-gid-map-group**=*group*
 
 Specifies that a GID mapping which should be used to set ownership, at the
@@ -703,6 +674,42 @@ their own user namespaces, configured using the UID and GID maps.
 If --userns-uid-map-user is specified, but --userns-gid-map-group is not
 specified, `podman` will assume that the specified user name is also a
 suitable group name to use as the default setting for this option.
+
+**NOTE:** When this option is specified by a rootless user, the specified
+mappings are relative to the rootless user namespace in the container, rather
+than being relative to the host as it would be when run rootfull.
+
+#### **--userns-uid-map**=*mapping*
+
+Directly specifies a UID mapping which should be used to set ownership, at the
+filesystem level, on the working container's contents.
+Commands run when handling `RUN` instructions will default to being run in
+their own user namespaces, configured using the UID and GID maps.
+
+Entries in this map take the form of one or more triples of a starting
+in-container UID, a corresponding starting host-level UID, and the number of
+consecutive IDs which the map entry represents.
+
+This option overrides the *remap-uids* setting in the *options* section of
+/etc/containers/storage.conf.
+
+If this option is not specified, but a global --userns-uid-map setting is
+supplied, settings from the global option will be used.
+
+If none of --userns-uid-map-user, --userns-gid-map-group, or --userns-uid-map
+are specified, but --userns-gid-map is specified, the UID map will be set to
+use the same numeric values as the GID map.
+
+#### **--userns-uid-map-user**=*user*
+
+Specifies that a UID mapping which should be used to set ownership, at the
+filesystem level, on the working container's contents, can be found in entries
+in the `/etc/subuid` file which correspond to the specified user.
+Commands run when handling `RUN` instructions will default to being run in
+their own user namespaces, configured using the UID and GID maps.
+If --userns-gid-map-group is specified, but --userns-uid-map-user is not
+specified, `podman` will assume that the specified group name is also a
+suitable user name to use as the default setting for this option.
 
 **NOTE:** When this option is specified by a rootless user, the specified
 mappings are relative to the rootless user namespace in the container, rather
@@ -1003,7 +1010,7 @@ Exclude all doc files except Help.doc from the image.
 This functionality is compatible with the handling of .containerignore files
 described here:
 
-https://github.com/containers/buildah/blob/main/docs/containerignore.5.md
+https://github.com/containers/common/blob/main/docs/containerignore.5.md
 
 **registries.conf** (`/etc/containers/registries.conf`)
 
@@ -1025,7 +1032,7 @@ If you are using `useradd` within your build script, you should pass the
 useradd to stop creating the lastlog file.
 
 ## SEE ALSO
-**[podman(1)](podman.1.md)**, **[buildah(1)](https://github.com/containers/buildah/blob/main/docs/buildah.1.md)**, **[containers-certs.d(5)](https://github.com/containers/image/blob/main/docs/containers-certs.d.5.md)**, **[containers-registries.conf(5)](https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md)**, **[crun(1)](https://github.com/containers/crun/blob/main/crun.1.md)**, **[runc(8)](https://github.com/opencontainers/runc/blob/master/man/runc.8.md)**, **[useradd(8)](https://www.unix.com/man-page/redhat/8/useradd)**, **[podman-ps(1)](podman-ps.1.md)**, **[podman-rm(1)](podman-rm.1.md)**, **[Containerfile(5)](https://github.com/containers/buildah/blob/main/docs/Containerfile.5.md)**, **[containerignore(5)](https://github.com/containers/buildah/blob/main/docs/containerignore.5.md)**
+**[podman(1)](podman.1.md)**, **[buildah(1)](https://github.com/containers/buildah/blob/main/docs/buildah.1.md)**, **[containers-certs.d(5)](https://github.com/containers/image/blob/main/docs/containers-certs.d.5.md)**, **[containers-registries.conf(5)](https://github.com/containers/image/blob/main/docs/containers-registries.conf.5.md)**, **[crun(1)](https://github.com/containers/crun/blob/main/crun.1.md)**, **[runc(8)](https://github.com/opencontainers/runc/blob/master/man/runc.8.md)**, **[useradd(8)](https://www.unix.com/man-page/redhat/8/useradd)**, **[podman-ps(1)](podman-ps.1.md)**, **[podman-rm(1)](podman-rm.1.md)**, **[Containerfile(5)](https://github.com/containers/common/blob/main/docs/Containerfile.5.md)**, **[containerignore(5)](https://github.com/containers/common/blob/main/docs/containerignore.5.md)**
 
 ## HISTORY
 Aug 2020, Additional options and .containerignore added by Dan Walsh `<dwalsh@redhat.com>`

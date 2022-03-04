@@ -248,8 +248,7 @@ Labels.created_at | 20[0-9-]\\\+T[0-9:]\\\+Z
     run_podman inspect --format '{{.ID}}' $IMAGE
     imageID=$output
 
-    run_podman version --format "{{.Server.Version}}-{{.Server.Built}}"
-    pauseImage=localhost/podman-pause:$output
+    pauseImage=$(pause_image)
     run_podman inspect --format '{{.ID}}' $pauseImage
     pauseID=$output
 
@@ -302,6 +301,15 @@ Deleted: $pauseID"
 
     # Other images are still present.
     run_podman image exists $IMAGE
+}
+
+@test "podman rmi --ignore" {
+    random_image_name=$(random_string)
+    random_image_name=${random_image_name,,} # name must be lowercase
+    run_podman 1 rmi $random_image_name
+    is "$output" "Error: $random_image_name: image not known.*"
+    run_podman rmi --ignore $random_image_name
+    is "$output" ""
 }
 
 # vim: filetype=sh

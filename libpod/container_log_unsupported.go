@@ -1,4 +1,5 @@
-//+build !linux !systemd
+//go:build !linux || !systemd
+// +build !linux !systemd
 
 package libpod
 
@@ -10,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *Container) readFromJournal(_ context.Context, _ *logs.LogOptions, _ chan *logs.LogLine) error {
+func (c *Container) readFromJournal(_ context.Context, _ *logs.LogOptions, _ chan *logs.LogLine, colorID int64) error {
 	return errors.Wrapf(define.ErrOSNotSupported, "Journald logging only enabled with systemd on linux")
 }
 

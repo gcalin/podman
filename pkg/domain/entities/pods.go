@@ -263,6 +263,7 @@ type ContainerCreateOptions struct {
 	Workdir           string
 	SeccompPolicy     string
 	PidFile           string
+	ChrootDirs        []string
 	IsInfra           bool
 	IsClone           bool
 
@@ -481,6 +482,7 @@ func PodLogsOptionsToContainerLogsOptions(options PodLogsOptions) ContainerLogsO
 		Until:        options.Until,
 		Tail:         options.Tail,
 		Timestamps:   options.Timestamps,
+		Colors:       options.Colors,
 		StdoutWriter: options.StdoutWriter,
 		StderrWriter: options.StderrWriter,
 	}

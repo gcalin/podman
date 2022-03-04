@@ -463,6 +463,8 @@ func ParseIDMapping(mode namespaces.UsernsMode, uidMapSlice, gidMapSlice []strin
 var (
 	rootlessConfigHomeDirOnce sync.Once
 	rootlessConfigHomeDir     string
+	rootlessRuntimeDirOnce    sync.Once
+	rootlessRuntimeDir        string
 )
 
 type tomlOptionsConfig struct {
@@ -725,7 +727,7 @@ func SocketPath() (string, error) {
 func LookupUser(name string) (*user.User, error) {
 	// Assume UID look up first, if it fails lookup by username
 	if u, err := user.LookupId(name); err == nil {
-		return u, err
+		return u, nil
 	}
 	return user.Lookup(name)
 }

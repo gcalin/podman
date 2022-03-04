@@ -819,6 +819,9 @@ func FillOutSpecGen(s *specgen.SpecGenerator, c *entities.ContainerCreateOptions
 	if !s.UnsetEnvAll {
 		s.UnsetEnvAll = c.UnsetEnvAll
 	}
+	if len(s.ChrootDirs) == 0 || len(c.ChrootDirs) != 0 {
+		s.ChrootDirs = c.ChrootDirs
+	}
 
 	// Initcontainers
 	if len(s.InitContainerType) == 0 || len(c.InitContainerType) != 0 {
@@ -844,7 +847,8 @@ func makeHealthCheckFromCli(inCmd, interval string, retries uint, timeout, start
 	if len(cmdArr) == 0 {
 		return nil, errors.New("Must define a healthcheck command for all healthchecks")
 	}
-	concat := ""
+
+	var concat string
 	if cmdArr[0] == "CMD" || cmdArr[0] == "none" { // this is for compat, we are already split properly for most compat cases
 		cmdArr = strings.Fields(inCmd)
 	} else if cmdArr[0] != "CMD-SHELL" { // this is for podman side of things, won't contain the keywords

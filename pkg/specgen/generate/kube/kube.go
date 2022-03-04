@@ -20,6 +20,8 @@ import (
 	"github.com/containers/podman/v4/libpod/define"
 	ann "github.com/containers/podman/v4/pkg/annotations"
 	"github.com/containers/podman/v4/pkg/domain/entities"
+	v1 "github.com/containers/podman/v4/pkg/k8s.io/api/core/v1"
+	"github.com/containers/podman/v4/pkg/k8s.io/apimachinery/pkg/api/resource"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/containers/podman/v4/pkg/specgen/generate"
 	"github.com/containers/podman/v4/pkg/util"
@@ -27,8 +29,6 @@ import (
 	"github.com/docker/go-units"
 	spec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 func ToPodOpt(ctx context.Context, podName string, p entities.PodCreateOptions, podYAML *v1.PodTemplateSpec) (entities.PodCreateOptions, error) {
@@ -277,7 +277,13 @@ func ToSpecGen(ctx context.Context, opts *CtrSpecGenOptions) (*specgen.SpecGener
 	}
 
 	annotations := make(map[string]string)
+	if opts.Annotations != nil {
+		annotations = opts.Annotations
+	}
 	if opts.PodInfraID != "" {
+		if annotations == nil {
+
+		}
 		annotations[ann.SandboxID] = opts.PodInfraID
 		annotations[ann.ContainerType] = ann.ContainerTypeContainer
 	}

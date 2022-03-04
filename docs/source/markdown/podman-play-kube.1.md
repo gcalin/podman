@@ -72,9 +72,11 @@ disable builds.
 
 `Kubernetes ConfigMap`
 
-Kubernetes ConfigMap can be referred as a source of environment variables in Pods or Deployments.
+Kubernetes ConfigMap can be referred as a source of environment variables or volumes in Pods or Deployments.
+ConfigMaps aren't a standalone object in Podman; instead, when a container uses a ConfigMap, Podman will create environment variables or volumes as needed.
 
-For example ConfigMap defined in following YAML:
+For example, the following YAML document defines a ConfigMap and then uses it in a Pod:
+
 ```
 apiVersion: v1
 kind: ConfigMap
@@ -82,14 +84,11 @@ metadata:
   name: foo
 data:
     FOO: bar
-```
-
-can be referred in a Pod in following way:
-```
+---
 apiVersion: v1
 kind: Pod
 metadata:
-...
+  name: foobar
 spec:
   containers:
   - command:
@@ -106,6 +105,11 @@ and as a result environment variable `FOO` will be set to `bar` for container `c
 
 ## OPTIONS
 
+#### **--annotation**=*key=value*
+
+Add an annotation to the container or pod. The format is key=value.
+The **--annotation** option can be set multiple times.
+
 #### **--authfile**=*path*
 
 Path of the authentication file. Default is ${XDG\_RUNTIME\_DIR}/containers/auth.json, which is set using `podman login`.
@@ -116,7 +120,7 @@ environment variable. `export REGISTRY_AUTH_FILE=path`
 
 #### **--build**
 
-Build images even if they are found in the local storage. Use `--build=false` to completely disable builds.
+Build images even if they are found in the local storage. Use `--build=false` to completely disable builds. (This option is not available with the remote Podman client)
 
 #### **--cert-dir**=*path*
 
@@ -125,9 +129,13 @@ Please refer to containers-certs.d(5) for details. (This option is not available
 
 #### **--configmap**=*path*
 
-Use Kubernetes configmap YAML at path to provide a source for environment variable values within the containers of the pod.
+Use Kubernetes configmap YAML at path to provide a source for environment variable values within the containers of the pod.  (This option is not available with the remote Podman client)
 
 Note: The *--configmap* option can be used multiple times or a comma-separated list of paths can be used to pass multiple Kubernetes configmap YAMLs.
+
+#### **--context-dir**=*path*
+
+Use *path* as the build context directory for each image. Requires --build option be true. (This option is not available with the remote Podman client)
 
 #### **--creds**
 
@@ -139,6 +147,10 @@ value can be entered.  The password is entered without echo.
 
 Tears down the pods that were created by a previous run of `play kube`.  The pods are stopped and then
 removed.  Any volumes created are left intact.
+
+#### **--help**, **-h**
+
+Print usage statement
 
 #### **--ip**=*IP address*
 
@@ -227,10 +239,6 @@ Start the pod after creating it, set to false to only create it.
 Require HTTPS and verify certificates when contacting registries (default: true). If explicitly set to true,
 then TLS verification will be used. If set to false, then TLS verification will not be used. If not specified,
 TLS verification will be used unless the target registry is listed as an insecure registry in registries.conf.
-
-#### **--help**, **-h**
-
-Print usage statement
 
 ## EXAMPLES
 

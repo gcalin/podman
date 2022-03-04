@@ -1,3 +1,4 @@
+//go:build amd64 || arm64
 // +build amd64 arm64
 
 package machine
@@ -28,14 +29,16 @@ type InitOptions struct {
 	Username     string
 	ReExec       bool
 	Rootful      bool
+	// The numberical userid of the user that called machine
+	UID string
 }
 
 type QemuMachineStatus = string
 
 const (
-	// Running indicates the qemu vm is running
+	// Running indicates the qemu vm is running.
 	Running QemuMachineStatus = "running"
-	//	Stopped indicates the vm has stopped
+	// Stopped indicates the vm has stopped.
 	Stopped            QemuMachineStatus = "stopped"
 	DefaultMachineName string            = "podman-machine-default"
 )
@@ -144,7 +147,7 @@ func (rc RemoteConnectionType) MakeSSHURL(host, path, port, userName string) url
 }
 
 // GetDataDir returns the filepath where vm images should
-// live for podman-machine
+// live for podman-machine.
 func GetDataDir(vmType string) (string, error) {
 	data, err := homedir.GetDataHome()
 	if err != nil {

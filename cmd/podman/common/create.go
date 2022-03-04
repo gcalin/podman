@@ -631,6 +631,14 @@ func DefineCreateFlags(cmd *cobra.Command, cf *entities.ContainerCreateOptions, 
 			"Write the container process ID to the file")
 		_ = cmd.RegisterFlagCompletionFunc(pidFileFlagName, completion.AutocompleteDefault)
 
+		chrootDirsFlagName := "chrootdirs"
+		createFlags.StringSliceVar(
+			&cf.ChrootDirs,
+			chrootDirsFlagName, []string{},
+			"Chroot directories inside the container",
+		)
+		_ = cmd.RegisterFlagCompletionFunc(chrootDirsFlagName, completion.AutocompleteDefault)
+
 		if registry.IsRemote() {
 			_ = createFlags.MarkHidden("env-host")
 			_ = createFlags.MarkHidden("http-proxy")
@@ -713,7 +721,7 @@ func DefineCreateFlags(cmd *cobra.Command, cf *entities.ContainerCreateOptions, 
 			"Optional parent cgroup for the container",
 		)
 		_ = cmd.RegisterFlagCompletionFunc(cgroupParentFlagName, completion.AutocompleteDefault)
-		conmonPidfileFlagName := ""
+		var conmonPidfileFlagName string
 		if !isInfra {
 			conmonPidfileFlagName = "conmon-pidfile"
 		} else {
@@ -726,7 +734,7 @@ func DefineCreateFlags(cmd *cobra.Command, cf *entities.ContainerCreateOptions, 
 		)
 		_ = cmd.RegisterFlagCompletionFunc(conmonPidfileFlagName, completion.AutocompleteDefault)
 
-		entrypointFlagName := ""
+		var entrypointFlagName string
 		if !isInfra {
 			entrypointFlagName = "entrypoint"
 		} else {
