@@ -481,6 +481,7 @@ func PodLogsOptionsToContainerLogsOptions(options PodLogsOptions) ContainerLogsO
 		Until:        options.Until,
 		Tail:         options.Tail,
 		Timestamps:   options.Timestamps,
+		DiffColors:   options.DiffColors,
 		StdoutWriter: options.StdoutWriter,
 		StderrWriter: options.StderrWriter,
 	}
