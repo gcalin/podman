@@ -21,19 +21,10 @@ func init() {
 	logDrivers = append(logDrivers, define.KubernetesLogging, define.NoLogging, define.PassthroughLogging)
 }
 
-func cloneLogOpts(options *logs.LogOptions) *logs.LogOptions {
-
-	clone := logs.LogOptions{options.Details, options.Follow, options.Since, options.Until, options.Tail,
-		options.Timestamps, options.DiffColors, options.ColorId, options.Multi, options.WaitGroup, options.UseName}
-	return &clone
-}
-
 // Log is a runtime function that can read one or more container logs.
 func (r *Runtime) Log(ctx context.Context, containers []*Container, options *logs.LogOptions, logChannel chan *logs.LogLine) error {
-	for c, ctr := range containers {
-		clonedOpts := cloneLogOpts(options)
-		clonedOpts.ColorId = c
-		if err := ctr.ReadLog(ctx, clonedOpts, logChannel); err != nil {
+	for _, ctr := range containers {
+		if err := ctr.ReadLog(ctx, options, logChannel); err != nil {
 			return err
 		}
 	}
@@ -54,7 +45,6 @@ func (c *Container) ReadLog(ctx context.Context, options *logs.LogOptions, logCh
 		// has support.
 		fallthrough
 	case define.KubernetesLogging, "":
-		fmt.Printf("Using kubernetes logging, options with ColorId %d", options.ColorId)
 		return c.readFromLogFile(ctx, options, logChannel)
 	default:
 		return errors.Wrapf(define.ErrInternal, "unrecognized log driver %q, cannot read logs", c.LogDriver())

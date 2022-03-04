@@ -1,5 +1,5 @@
-//go:build linux && systemd
-// +build linux,systemd
+//+build linux
+//+build systemd
 
 package libpod
 
@@ -231,7 +231,6 @@ func (c *Container) readFromJournal(ctx context.Context, options *logs.LogOption
 			}
 
 			logLine, err := logs.NewJournaldLogLine(message, options.Multi)
-			logLine.ColorId = options.ColorId
 			if err != nil {
 				logrus.Errorf("Failed parse log line: %v", err)
 				return

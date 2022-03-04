@@ -37,8 +37,6 @@ type LogOptions struct {
 	Until      time.Time
 	Tail       int64
 	Timestamps bool
-	DiffColors bool
-	ColorId    int
 	Multi      bool
 	WaitGroup  *sync.WaitGroup
 	UseName    bool
@@ -52,7 +50,6 @@ type LogLine struct {
 	Msg          string
 	CID          string
 	CName        string
-	ColorId      int
 }
 
 // GetLogFile returns an hp tail for a container given options
@@ -165,22 +162,10 @@ func getTailLog(path string, tail int) ([]*LogLine, error) {
 	return tailLog, nil
 }
 
-func getColors() map[int]string {
-	colors := map[int]string{
-		0: "\033[32m",
-		1: "\033[33m",
-		2: "\033[34m",
-		3: "\033[35m",
-	}
-	return colors
-}
-
 // String converts a log line to a string for output given whether a detail
 // bool is specified.
 func (l *LogLine) String(options *LogOptions) string {
 	var out string
-	var color_first string
-	var color_last string
 	if options.Multi {
 		if options.UseName {
 			out = l.CName + " "
@@ -192,18 +177,10 @@ func (l *LogLine) String(options *LogOptions) string {
 			out = fmt.Sprintf("%s ", cid)
 		}
 	}
-
-	// Improve by using a colorize method
-	if options.DiffColors {
-		color_first += getColors()[l.ColorId%len(getColors())]
-		color_last += "\033[0m"
-	}
-
 	if options.Timestamps {
 		out += fmt.Sprintf("%s ", l.Time.Format(LogTimeFormat))
 	}
-
-	return color_first + out + l.Msg + color_last
+	return out + l.Msg
 }
 
 // Since returns a bool as to whether a log line occurred after a given time
