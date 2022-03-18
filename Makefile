@@ -102,6 +102,7 @@ LDFLAGS_PODMAN ?= \
 	-X $(LIBPOD)/define.buildInfo=$(BUILD_INFO) \
 	-X $(LIBPOD)/config._installPrefix=$(PREFIX) \
 	-X $(LIBPOD)/config._etcDir=$(ETCDIR) \
+	-X github.com/containers/common/pkg/config.additionalHelperBinariesDir=$(HELPER_BINARIES_DIR)\
 	$(EXTRA_LDFLAGS)
 LDFLAGS_PODMAN_STATIC ?= \
 	$(LDFLAGS_PODMAN) \
@@ -191,7 +192,7 @@ endif
 # dependencies. This is only used for the Windows installer task (podman.msi), which must
 # include this lightweight helper binary.
 #
-GV_GITURL=git://github.com/containers/gvisor-tap-vsock.git
+GV_GITURL=https://github.com/containers/gvisor-tap-vsock.git
 GV_SHA=e943b1806d94d387c4c38d96719432d50a84bbd0
 
 ###
@@ -303,7 +304,7 @@ vendor:
 vendor-in-container:
 	podman run --privileged --rm --env HOME=/root \
 		-v $(CURDIR):/src -w /src \
-		docker.io/library/golang:1.16 \
+		docker.io/library/golang:1.17 \
 		make vendor
 
 ###
@@ -540,8 +541,8 @@ validate.completions:
 .PHONY: run-docker-py-tests
 run-docker-py-tests:
 	touch test/__init__.py
-	env CONTAINERS_CONF=$(CURDIR)/test/apiv2/containers.conf pytest test/python/docker/
-	-rm test/__init__.py
+	env CONTAINERS_CONF=$(CURDIR)/test/apiv2/containers.conf pytest --disable-warnings test/python/docker/
+	rm -f test/__init__.py
 
 .PHONY: localunit
 localunit: test/goecho/goecho test/version/version
@@ -622,9 +623,15 @@ remotesystem:
 
 .PHONY: localapiv2
 localapiv2:
-	env PODMAN=./bin/podman ./test/apiv2/test-apiv2
-	env CONTAINERS_CONF=$(CURDIR)/test/apiv2/containers.conf PODMAN=./bin/podman ${PYTHON} -m unittest discover -v ./test/apiv2/python
-	env CONTAINERS_CONF=$(CURDIR)/test/apiv2/containers.conf PODMAN=./bin/podman ${PYTHON} -m unittest discover -v ./test/python/docker
+	# Order is important running python tests first causes the bash tests to fail, see 12-imagesMore
+	# FIXME order of tests should not matter
+	env PODMAN=./bin/podman stdbuf -o0 -e0 ./test/apiv2/test-apiv2
+	env CONTAINERS_CONF=$(CURDIR)/test/apiv2/containers.conf PODMAN=./bin/podman \
+		pytest --disable-warnings ./test/apiv2/python
+	touch test/__init__.py
+	env CONTAINERS_CONF=$(CURDIR)/test/apiv2/containers.conf PODMAN=./bin/podman \
+		pytest --disable-warnings ./test/python/docker
+	rm -f test/__init__.py
 
 .PHONY: remoteapiv2
 remoteapiv2:
@@ -948,5 +955,5 @@ clean: clean-binaries ## Clean all make artifacts
 		libpod/pod_easyjson.go \
 		.install.goimports \
 		docs/build \
-		venv
+		.venv
 	make -C docs clean

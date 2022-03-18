@@ -280,7 +280,7 @@ t DELETE containers/$cid_top 204
 t POST containers/create \
   Image=$ENV_WORKDIR_IMG \
   WorkingDir=/dataDir \
-  StopSignal=9 \
+  StopSignal=\"9\" \
   201 \
   .Id~[0-9a-f]\\{64\\}
 cid=$(jq -r '.Id' <<<"$output")
@@ -394,7 +394,8 @@ t GET containers/$cid/json 200 \
   .Config.Healthcheck.Retries=3
 
 # compat api: Test for mount options support
-payload='{"Mounts":[{"Type":"tmpfs","Target":"/mnt/scratch","TmpfsOptions":{"SizeBytes":1024,"Mode":755}}]}'
+# Sigh, JSON can't handle octal. 0755(octal) = 493(decimal)
+payload='{"Mounts":[{"Type":"tmpfs","Target":"/mnt/scratch","TmpfsOptions":{"SizeBytes":1024,"Mode":493}}]}'
 t POST containers/create Image=$IMAGE HostConfig="$payload" 201 .Id~[0-9a-f]\\{64\\}
 cid=$(jq -r '.Id' <<<"$output")
 t GET containers/$cid/json 200 \

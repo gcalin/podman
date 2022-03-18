@@ -55,10 +55,15 @@ function _run_unit() {
 }
 
 function _run_apiv2() {
+    source .venv/requests/bin/activate
     make localapiv2 |& logformatter
 }
 
 function _run_compose() {
+    ./test/compose/test-compose |& logformatter
+}
+
+function _run_compose_v2() {
     ./test/compose/test-compose |& logformatter
 }
 
@@ -96,7 +101,7 @@ function _run_bindings() {
 }
 
 function _run_docker-py() {
-    source venv/bin/activate
+    source .venv/docker-py/bin/activate
     make run-docker-py-tests
 }
 

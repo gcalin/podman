@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package libpod
@@ -1199,7 +1200,7 @@ func (r *ConmonOCIRuntime) createOCIContainer(ctr *Container, restoreOptions *Co
 	cmd.ExtraFiles = append(cmd.ExtraFiles, childSyncPipe, childStartPipe)
 
 	if r.reservePorts && !rootless.IsRootless() && !ctr.config.NetMode.IsSlirp4netns() {
-		ports, err := bindPorts(ctr.config.PortMappings)
+		ports, err := bindPorts(ctr.convertPortMappings())
 		if err != nil {
 			return 0, err
 		}

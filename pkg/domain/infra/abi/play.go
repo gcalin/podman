@@ -20,6 +20,8 @@ import (
 	"github.com/containers/podman/v4/libpod/define"
 	"github.com/containers/podman/v4/pkg/autoupdate"
 	"github.com/containers/podman/v4/pkg/domain/entities"
+	v1apps "github.com/containers/podman/v4/pkg/k8s.io/api/apps/v1"
+	v1 "github.com/containers/podman/v4/pkg/k8s.io/api/core/v1"
 	"github.com/containers/podman/v4/pkg/specgen"
 	"github.com/containers/podman/v4/pkg/specgen/generate"
 	"github.com/containers/podman/v4/pkg/specgen/generate/kube"
@@ -28,9 +30,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	yamlv3 "gopkg.in/yaml.v3"
-	v1apps "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/core/v1"
+	yamlv2 "gopkg.in/yaml.v2"
 )
 
 func (ic *ContainerEngine) PlayKube(ctx context.Context, path string, options entities.PlayKubeOptions) (*entities.PlayKubeReport, error) {
@@ -78,6 +78,13 @@ func (ic *ContainerEngine) PlayKube(ctx context.Context, path string, options en
 
 			podTemplateSpec.ObjectMeta = podYAML.ObjectMeta
 			podTemplateSpec.Spec = podYAML.Spec
+
+			for name, val := range options.Annotations {
+				if podYAML.Annotations == nil {
+					podYAML.Annotations = make(map[string]string)
+				}
+				podYAML.Annotations[name] = val
+			}
 
 			r, err := ic.playKubePod(ctx, podTemplateSpec.ObjectMeta.Name, &podTemplateSpec, options, &ipIndex, podYAML.Annotations, configMaps)
 			if err != nil {
@@ -128,6 +135,9 @@ func (ic *ContainerEngine) PlayKube(ctx context.Context, path string, options en
 	}
 
 	if validKinds == 0 {
+		if len(configMaps) > 0 {
+			return nil, fmt.Errorf("ConfigMaps in podman are not a standalone object and must be used in a container")
+		}
 		return nil, fmt.Errorf("YAML document does not contain any supported kube kind")
 	}
 
@@ -351,12 +361,24 @@ func (ic *ContainerEngine) playKubePod(ctx context.Context, podName string, podY
 
 	containers := make([]*libpod.Container, 0, len(podYAML.Spec.Containers))
 	initContainers := make([]*libpod.Container, 0, len(podYAML.Spec.InitContainers))
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
+
+	var cwd string
+	if options.ContextDir != "" {
+		cwd = options.ContextDir
+	} else {
+		cwd, err = os.Getwd()
+		if err != nil {
+			return nil, err
+		}
 	}
 
+	ctrNames := make(map[string]string)
 	for _, initCtr := range podYAML.Spec.InitContainers {
+		// Error out if same name is used for more than one container
+		if _, ok := ctrNames[initCtr.Name]; ok {
+			return nil, errors.Errorf("the pod %q is invalid; duplicate container name %q detected", podName, initCtr.Name)
+		}
+		ctrNames[initCtr.Name] = ""
 		// Init containers cannot have either of lifecycle, livenessProbe, readinessProbe, or startupProbe set
 		if initCtr.Lifecycle != nil || initCtr.LivenessProbe != nil || initCtr.ReadinessProbe != nil || initCtr.StartupProbe != nil {
 			return nil, errors.Errorf("cannot create an init container that has either of lifecycle, livenessProbe, readinessProbe, or startupProbe set")
@@ -405,6 +427,11 @@ func (ic *ContainerEngine) playKubePod(ctx context.Context, podName string, podY
 	}
 	for _, container := range podYAML.Spec.Containers {
 		if !strings.Contains("infra", container.Name) {
+			// Error out if the same name is used for more than one container
+			if _, ok := ctrNames[container.Name]; ok {
+				return nil, errors.Errorf("the pod %q is invalid; duplicate container name %q detected", podName, container.Name)
+			}
+			ctrNames[container.Name] = ""
 			pulledImage, labels, err := ic.getImageAndLabelInfo(ctx, cwd, annotations, writer, container, options)
 			if err != nil {
 				return nil, err
@@ -435,6 +462,7 @@ func (ic *ContainerEngine) playKubePod(ctx context.Context, podName string, podY
 			if err != nil {
 				return nil, err
 			}
+			specGen.RawImageName = container.Image
 			rtSpec, spec, opts, err := generate.MakeContainer(ctx, ic.Libpod, specGen, false, nil)
 			if err != nil {
 				return nil, err
@@ -561,7 +589,7 @@ func (ic *ContainerEngine) playKubePVC(ctx context.Context, pvcYAML *v1.Persiste
 
 	// Get pvc name.
 	// This is the only required pvc attribute to create a podman volume.
-	name := pvcYAML.GetName()
+	name := pvcYAML.Name
 	if strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("persistent volume claim name can not be empty")
 	}
@@ -569,13 +597,13 @@ func (ic *ContainerEngine) playKubePVC(ctx context.Context, pvcYAML *v1.Persiste
 	// Create podman volume options.
 	volOptions := []libpod.VolumeCreateOption{
 		libpod.WithVolumeName(name),
-		libpod.WithVolumeLabels(pvcYAML.GetLabels()),
+		libpod.WithVolumeLabels(pvcYAML.Labels),
 	}
 
 	// Get pvc annotations and create remaining podman volume options if available.
 	// These are podman volume options that do not match any of the persistent volume claim
 	// attributes, so they can be configured using annotations since they will not affect k8s.
-	for k, v := range pvcYAML.GetAnnotations() {
+	for k, v := range pvcYAML.Annotations {
 		switch k {
 		case util.VolumeDriverAnnotation:
 			volOptions = append(volOptions, libpod.WithVolumeDriver(v))
@@ -641,7 +669,7 @@ func readConfigMapFromFile(r io.Reader) (v1.ConfigMap, error) {
 func splitMultiDocYAML(yamlContent []byte) ([][]byte, error) {
 	var documentList [][]byte
 
-	d := yamlv3.NewDecoder(bytes.NewReader(yamlContent))
+	d := yamlv2.NewDecoder(bytes.NewReader(yamlContent))
 	for {
 		var o interface{}
 		// read individual document
@@ -655,7 +683,7 @@ func splitMultiDocYAML(yamlContent []byte) ([][]byte, error) {
 
 		if o != nil {
 			// back to bytes
-			document, err := yamlv3.Marshal(o)
+			document, err := yamlv2.Marshal(o)
 			if err != nil {
 				return nil, errors.Wrapf(err, "individual doc yaml could not be marshalled")
 			}

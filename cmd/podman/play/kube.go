@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/containers/common/pkg/auth"
 	"github.com/containers/common/pkg/completion"
@@ -31,7 +32,8 @@ type playKubeOptionsWrapper struct {
 }
 
 var (
-	macs []string
+	annotations []string
+	macs        []string
 	// https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/
 	defaultSeccompRoot = "/var/lib/kubelet/seccomp"
 	kubeOptions        = playKubeOptionsWrapper{}
@@ -61,6 +63,13 @@ func init() {
 	flags := kubeCmd.Flags()
 	flags.SetNormalizeFunc(utils.AliasFlags)
 
+	annotationFlagName := "annotation"
+	flags.StringSliceVar(
+		&annotations,
+		annotationFlagName, []string{},
+		"Add annotations to pods (key=value)",
+	)
+	_ = kubeCmd.RegisterFlagCompletionFunc(annotationFlagName, completion.AutocompleteNone)
 	credsFlagName := "creds"
 	flags.StringVar(&kubeOptions.CredentialsCLI, credsFlagName, "", "`Credentials` (USERNAME:PASSWORD) to use for authenticating to a registry")
 	_ = kubeCmd.RegisterFlagCompletionFunc(credsFlagName, completion.AutocompleteNone)
@@ -119,9 +128,11 @@ func init() {
 
 		buildFlagName := "build"
 		flags.BoolVar(&kubeOptions.BuildCLI, buildFlagName, false, "Build all images in a YAML (given Containerfiles exist)")
-	}
 
-	if !registry.IsRemote() {
+		contextDirFlagName := "context-dir"
+		flags.StringVar(&kubeOptions.ContextDir, contextDirFlagName, "", "Path to top level of context directory")
+		_ = kubeCmd.RegisterFlagCompletionFunc(contextDirFlagName, completion.AutocompleteDefault)
+
 		flags.StringVar(&kubeOptions.SignaturePolicy, "signature-policy", "", "`Pathname` of signature policy file (not usually used)")
 
 		_ = flags.MarkHidden("signature-policy")
@@ -147,6 +158,9 @@ func kube(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+	if kubeOptions.ContextDir != "" && kubeOptions.Build != types.OptionalBoolTrue {
+		return errors.New("--build must be specified when using --context-dir option")
+	}
 	if kubeOptions.CredentialsCLI != "" {
 		creds, err := util.ParseRegistryCreds(kubeOptions.CredentialsCLI)
 		if err != nil {
@@ -156,6 +170,16 @@ func kube(cmd *cobra.Command, args []string) error {
 		kubeOptions.Password = creds.Password
 	}
 
+	for _, annotation := range annotations {
+		splitN := strings.SplitN(annotation, "=", 2)
+		if len(splitN) > 2 {
+			return errors.Errorf("annotation %q must include an '=' sign", annotation)
+		}
+		if kubeOptions.Annotations == nil {
+			kubeOptions.Annotations = make(map[string]string)
+		}
+		kubeOptions.Annotations[splitN[0]] = splitN[1]
+	}
 	yamlfile := args[0]
 	if yamlfile == "-" {
 		yamlfile = "/dev/stdin"

@@ -1,3 +1,4 @@
+//go:build amd64 || arm64
 // +build amd64 arm64
 
 package machine
@@ -37,7 +38,7 @@ func init() {
 
 	flags := rmCmd.Flags()
 	formatFlagName := "force"
-	flags.BoolVar(&destoryOptions.Force, formatFlagName, false, "Do not prompt before rming")
+	flags.BoolVarP(&destoryOptions.Force, formatFlagName, "f", false, "Stop and do not prompt before rming")
 
 	keysFlagName := "save-keys"
 	flags.BoolVar(&destoryOptions.SaveKeys, keysFlagName, false, "Do not delete SSH keys")
@@ -64,7 +65,7 @@ func rm(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	confirmationMessage, remove, err := vm.Remove(vmName, machine.RemoveOptions{})
+	confirmationMessage, remove, err := vm.Remove(vmName, destoryOptions)
 	if err != nil {
 		return err
 	}
