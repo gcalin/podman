@@ -21,10 +21,31 @@ func init() {
 	logDrivers = append(logDrivers, define.KubernetesLogging, define.NoLogging, define.PassthroughLogging)
 }
 
+func cloneLogOpts(options *logs.LogOptions, newColor int64) *logs.LogOptions {
+	clone := logs.LogOptions{
+		Details:    options.Details,
+		Follow:     options.Follow,
+		Since:      options.Since,
+		Until:      options.Until,
+		Tail:       options.Tail,
+		Timestamps: options.Timestamps,
+		Colors:     options.Colors,
+		ColorId:    newColor,
+		Multi:      options.Multi,
+		WaitGroup:  options.WaitGroup,
+		UseName:    options.UseName,
+	}
+	return &clone
+}
+
 // Log is a runtime function that can read one or more container logs.
 func (r *Runtime) Log(ctx context.Context, containers []*Container, options *logs.LogOptions, logChannel chan *logs.LogLine) error {
-	for _, ctr := range containers {
-		if err := ctr.ReadLog(ctx, options, logChannel); err != nil {
+	for c, ctr := range containers {
+		clonedOpts := options
+		if options.Colors {
+			clonedOpts = cloneLogOpts(options, int64(c))
+		}
+		if err := ctr.ReadLog(ctx, clonedOpts, logChannel); err != nil {
 			return err
 		}
 	}
@@ -65,6 +86,7 @@ func (c *Container) readFromLogFile(ctx context.Context, options *logs.LogOption
 		for _, nll := range tailLog {
 			nll.CID = c.ID()
 			nll.CName = c.Name()
+			nll.ColorId = options.ColorId
 			if nll.Since(options.Since) && nll.Until(options.Until) {
 				logChannel <- nll
 			}
@@ -97,6 +119,7 @@ func (c *Container) readFromLogFile(ctx context.Context, options *logs.LogOption
 			}
 			nll.CID = c.ID()
 			nll.CName = c.Name()
+			nll.ColorId = options.ColorId
 			if nll.Since(options.Since) && nll.Until(options.Until) {
 				logChannel <- nll
 			}

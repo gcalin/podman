@@ -56,6 +56,10 @@ which prints all lines
 
 Show timestamps in the log outputs.  The default is false
 
+#### **--color**
+
+Display the logs of different containers within the same pod in different colors.
+
 ## EXAMPLE
 
 To view a pod's logs:

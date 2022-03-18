@@ -112,7 +112,9 @@ func logsFlags(cmd *cobra.Command) {
 	_ = cmd.RegisterFlagCompletionFunc(tailFlagName, completion.AutocompleteNone)
 
 	flags.BoolVarP(&logsOptions.Timestamps, "timestamps", "t", false, "Output the timestamps in the log")
+	flags.BoolVarP(&logsOptions.Colors, "color", "", false, "Output the different pods in different colors in the log")
 	flags.BoolVarP(&logsOptions.Names, "names", "n", false, "Output the container name in the log")
+
 	flags.SetInterspersed(false)
 	_ = flags.MarkHidden("details")
 }
