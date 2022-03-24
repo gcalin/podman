@@ -445,7 +445,8 @@ func (ir *ImageEngine) Import(ctx context.Context, options entities.ImageImportO
 	importOptions.Tag = options.Reference
 	importOptions.SignaturePolicyPath = options.SignaturePolicy
 	importOptions.OS = options.OS
-	importOptions.Architecture = options.Architecture
+	importOptions.Arch = options.Architecture
+	importOptions.Variant = options.Variant
 
 	if !options.Quiet {
 		importOptions.Writer = os.Stderr
@@ -578,6 +579,7 @@ func (ir *ImageEngine) Remove(ctx context.Context, images []string, opts entitie
 	libimageOptions := &libimage.RemoveImagesOptions{}
 	libimageOptions.Filters = []string{"readonly=false"}
 	libimageOptions.Force = opts.Force
+	libimageOptions.Ignore = opts.Ignore
 	libimageOptions.LookupManifest = opts.LookupManifest
 	if !opts.All {
 		libimageOptions.Filters = append(libimageOptions.Filters, "intermediate=false")
@@ -847,13 +849,12 @@ func execPodman(execUser *user.User, command []string) error {
 	if err != nil {
 		return err
 	}
-	defer func() error {
-		err := cmdLogin.Process.Kill()
-		if err != nil {
-			return err
-		}
-		return cmdLogin.Wait()
+
+	defer func() {
+		_ = cmdLogin.Process.Kill()
+		_ = cmdLogin.Wait()
 	}()
+
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Env = []string{"PATH=" + os.Getenv("PATH"), "TERM=" + os.Getenv("TERM")}
 	cmd.Stderr = os.Stderr

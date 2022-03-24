@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -170,7 +171,7 @@ func printVerbose(cmd *cobra.Command, reports *entities.SystemDfReport) error { 
 		return err
 	}
 	if err := writeTemplate(rpt, hdrs, dfImages); err != nil {
-		return nil
+		return err
 	}
 
 	fmt.Fprint(rpt.Writer(), "\nContainers space usage:\n\n")
@@ -190,7 +191,7 @@ func printVerbose(cmd *cobra.Command, reports *entities.SystemDfReport) error { 
 		return err
 	}
 	if err := writeTemplate(rpt, hdrs, dfContainers); err != nil {
-		return nil
+		return err
 	}
 
 	fmt.Fprint(rpt.Writer(), "\nLocal Volumes space usage:\n\n")
@@ -288,6 +289,10 @@ func (d *dfSummary) Size() string {
 }
 
 func (d *dfSummary) Reclaimable() string {
-	percent := int(float64(d.reclaimable)/float64(d.size)) * 100
+	percent := 0
+	// make sure to check this to prevent div by zero problems
+	if d.size > 0 {
+		percent = int(math.Round(float64(d.reclaimable) / float64(d.size) * float64(100)))
+	}
 	return fmt.Sprintf("%s (%d%%)", units.HumanSize(float64(d.reclaimable)), percent)
 }

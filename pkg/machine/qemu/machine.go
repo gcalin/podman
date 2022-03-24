@@ -34,7 +34,7 @@ import (
 
 var (
 	qemuProvider = &Provider{}
-	// vmtype refers to qemu (vs libvirt, krun, etc)
+	// vmtype refers to qemu (vs libvirt, krun, etc).
 	vmtype = "qemu"
 )
 
@@ -278,7 +278,9 @@ func (v *MachineVM) Init(opts machine.InitOptions) (bool, error) {
 		fmt.Println("An ignition path was provided.  No SSH connection was added to Podman")
 	}
 	// Write the JSON file
-	v.writeConfig()
+	if err := v.writeConfig(); err != nil {
+		return false, fmt.Errorf("writing JSON file: %w", err)
+	}
 
 	// User has provided ignition file so keygen
 	// will be skipped.
@@ -370,7 +372,7 @@ func (v *MachineVM) Start(name string, _ machine.StartOptions) error {
 		conn           net.Conn
 		err            error
 		qemuSocketConn net.Conn
-		wait           time.Duration = time.Millisecond * 500
+		wait           = time.Millisecond * 500
 	)
 
 	if v.isIncompatible() {
@@ -626,7 +628,8 @@ func (v *MachineVM) Stop(name string, _ machine.StopOptions) error {
 	}
 
 	if err := qmpMonitor.Disconnect(); err != nil {
-		return nil
+		// FIXME: this error should probably be returned
+		return nil // nolint: nilerr
 	}
 
 	disconnected = true
@@ -755,7 +758,8 @@ func (v *MachineVM) isRunning() (bool, error) {
 	// Check if we can dial it
 	monitor, err := qmp.NewSocketMonitor(v.QMPMonitor.Network, v.QMPMonitor.Address, v.QMPMonitor.Timeout)
 	if err != nil {
-		return false, nil
+		// FIXME: this error should probably be returned
+		return false, nil // nolint: nilerr
 	}
 	if err := monitor.Connect(); err != nil {
 		return false, err
@@ -778,7 +782,7 @@ func (v *MachineVM) isRunning() (bool, error) {
 
 func (v *MachineVM) isListening() bool {
 	// Check if we can dial it
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", "localhost", v.Port), 10*time.Millisecond)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", "127.0.0.1", v.Port), 10*time.Millisecond)
 	if err != nil {
 		return false
 	}
@@ -1097,10 +1101,13 @@ func waitAndPingAPI(sock string) {
 		Transport: &http.Transport{
 			DialContext: func(context.Context, string, string) (net.Conn, error) {
 				con, err := net.DialTimeout("unix", sock, apiUpTimeout)
-				if err == nil {
-					con.SetDeadline(time.Now().Add(apiUpTimeout))
+				if err != nil {
+					return nil, err
 				}
-				return con, err
+				if err := con.SetDeadline(time.Now().Add(apiUpTimeout)); err != nil {
+					return nil, err
+				}
+				return con, nil
 			},
 		},
 	}

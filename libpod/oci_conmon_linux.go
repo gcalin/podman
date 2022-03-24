@@ -661,7 +661,7 @@ func (r *ConmonOCIRuntime) HTTPAttach(ctr *Container, req *http.Request, w http.
 			}
 			errChan <- err
 		}()
-		if err := ctr.ReadLog(context.Background(), logOpts, logChan); err != nil {
+		if err := ctr.ReadLog(context.Background(), logOpts, logChan, 0); err != nil {
 			return err
 		}
 		go func() {
@@ -750,7 +750,7 @@ func openControlFile(ctr *Container, parentDir string) (*os.File, error) {
 	for i := 0; i < 600; i++ {
 		controlFile, err := os.OpenFile(controlPath, unix.O_WRONLY|unix.O_NONBLOCK, 0)
 		if err == nil {
-			return controlFile, err
+			return controlFile, nil
 		}
 		if !isRetryable(err) {
 			return nil, errors.Wrapf(err, "could not open ctl file for terminal resize for container %s", ctr.ID())
@@ -1015,7 +1015,8 @@ func (r *ConmonOCIRuntime) getLogTag(ctr *Container) (string, error) {
 	}
 	data, err := ctr.inspectLocked(false)
 	if err != nil {
-		return "", nil
+		// FIXME: this error should probably be returned
+		return "", nil // nolint: nilerr
 	}
 	tmpl, err := template.New("container").Parse(logTag)
 	if err != nil {
@@ -1371,7 +1372,7 @@ func (r *ConmonOCIRuntime) sharedConmonArgs(ctr *Container, cuuid, bundlePath, p
 	case define.JSONLogging:
 		fallthrough
 	//lint:ignore ST1015 the default case has to be here
-	default: //nolint-stylecheck
+	default: //nolint:stylecheck
 		// No case here should happen except JSONLogging, but keep this here in case the options are extended
 		logrus.Errorf("%s logging specified but not supported. Choosing k8s-file logging instead", ctr.LogDriver())
 		fallthrough
@@ -1596,7 +1597,7 @@ func readConmonPipeData(runtimeName string, pipe *os.File, ociLog string) (int, 
 		ch <- syncStruct{si: si}
 	}()
 
-	data := -1
+	data := -1 //nolint: wastedassign
 	select {
 	case ss := <-ch:
 		if ss.err != nil {

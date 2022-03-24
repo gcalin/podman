@@ -19,21 +19,21 @@ is used.
 
 ## OPTIONS
 
+#### **--force**, **-f**
+
+Stop and delete without confirmation.
+
 #### **--help**
 
 Print usage statement.
 
-#### **--force**, **-f**
-
-Stop and delete without confirmation
-
 #### **--save-ignition**
 
-Do not delete the generated ignition file
+Do not delete the generated ignition file.
 
 #### **--save-image**
 
-Do not delete the VM image
+Do not delete the VM image.
 
 #### **--save-keys**
 
@@ -42,7 +42,7 @@ deleted.
 
 ## EXAMPLES
 
-Remove a VM named "test1"
+Remove a VM named "test1":
 
 ```
 $ podman machine rm test1
