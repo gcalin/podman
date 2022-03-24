@@ -443,7 +443,7 @@ var _ = Describe("Podman logs", func() {
 		Expect(output).To(ContainElement(ContainSubstring(containerName1)))
 		Expect(output).To(ContainElement(ContainSubstring(containerName2)))
 	})
-
+  
 	It("podman pod logs with different colors", func() {
 		SkipIfRemote("Remote can only process one container at a time")
 		SkipIfInContainer("journalctl inside a container doesn't work correctly")
