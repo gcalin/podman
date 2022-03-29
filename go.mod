@@ -12,7 +12,7 @@ require (
 	github.com/containernetworking/cni v1.0.1
 	github.com/containernetworking/plugins v1.1.1
 	github.com/containers/buildah v1.24.3-0.20220310160415-5ec70bf01ea5
-	github.com/containers/common v0.47.5-0.20220318125043-0ededd18a1f9
+	github.com/containers/common v0.47.5-0.20220323125147-7dc6e944d625
 	github.com/containers/conmon v2.0.20+incompatible
 	github.com/containers/image/v5 v5.20.1-0.20220310094651-0d8056ee346f
 	github.com/containers/ocicrypt v1.1.3
@@ -24,7 +24,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/digitalocean/go-qemu v0.0.0-20210326154740-ac9e0b687001
 	github.com/docker/distribution v2.8.1+incompatible
-	github.com/docker/docker v20.10.13+incompatible
+	github.com/docker/docker v20.10.14+incompatible
 	github.com/docker/go-connections v0.4.1-0.20210727194412-58542c764a11
 	github.com/docker/go-plugins-helpers v0.0.0-20211224144127-6eecb7beb651
 	github.com/docker/go-units v0.4.0
@@ -54,7 +54,8 @@ require (
 	github.com/opencontainers/selinux v1.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
-	github.com/rootless-containers/rootlesskit v0.14.6
+	github.com/prometheus/client_golang v1.11.1 // indirect
+	github.com/rootless-containers/rootlesskit v1.0.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
@@ -67,9 +68,9 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
+	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8
 	golang.org/x/text v0.3.7
-	google.golang.org/protobuf v1.27.1
+	google.golang.org/protobuf v1.28.0
 	gopkg.in/inf.v0 v0.9.1
 	gopkg.in/yaml.v2 v2.4.0
 )

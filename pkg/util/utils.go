@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"math"
 	"os"
 	"os/user"
@@ -656,7 +657,7 @@ func CreateCidFile(cidfile string, id string) error {
 		if os.IsExist(err) {
 			return errors.Errorf("container id file exists. Ensure another container is not using it or delete %s", cidfile)
 		}
-		return errors.Errorf("error opening cidfile %s", cidfile)
+		return errors.Errorf("opening cidfile %s", cidfile)
 	}
 	if _, err = cidFile.WriteString(id); err != nil {
 		logrus.Error(err)
@@ -730,4 +731,21 @@ func LookupUser(name string) (*user.User, error) {
 		return u, nil
 	}
 	return user.Lookup(name)
+}
+
+// SizeOfPath determines the file usage of a given path. it was called volumeSize in v1
+// and now is made to be generic and take a path instead of a libpod volume
+func SizeOfPath(path string) (uint64, error) {
+	var size uint64
+	err := filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			info, err := d.Info()
+			if err != nil {
+				return err
+			}
+			size += uint64(info.Size())
+		}
+		return err
+	})
+	return size, err
 }

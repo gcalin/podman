@@ -1098,20 +1098,21 @@ Note: if you use the **--network=host** option, these sysctls will not be allowe
 Run container in systemd mode. The default is **true**.
 
 The value *always* enforces the systemd mode is enforced without
-looking at the executable name. Otherwise, if set to **true** and the
-command you are running inside the container is systemd, _/usr/sbin/init_,
-_/sbin/init_ or _/usr/local/sbin/init_.
+looking at the executable name. Otherwise, if set to true and the
+command you are running inside the container is **systemd**, **/usr/sbin/init**,
+**/sbin/init** or **/usr/local/sbin/init**.
 
-If the command you are running inside of the container is systemd
-Podman will setup tmpfs mount points in the following directories:
+Running the container in systemd mode causes the following changes:
 
-- _/run_
-- _/run/lock_
-- _/tmp_
-- _/sys/fs/cgroup/systemd_
-- _/var/lib/journal_
-
-It will also set the default stop signal to **SIGRTMIN+3**.
+* Podman mounts tmpfs file systems on the following directories
+  * _/run_
+  * _/run/lock_
+  * _/tmp_
+  * _/sys/fs/cgroup/systemd_
+  * _/var/lib/journal_
+* Podman sets the default stop signal to **SIGRTMIN+3**.
+* Podman sets **container_uuid** environment variable in the container to the
+first 32 characters of the container id.
 
 This allows systemd to run in a confined container without any modifications.
 
@@ -1934,8 +1935,6 @@ $ podman run --network net1:ip=10.89.1.5 --network net2:ip=10.89.10.10 alpine ip
 
 Podman runs as a non-root user on most systems. This feature requires that a new enough version of **shadow-utils**
 be installed. The **shadow-utils** package must include the **newuidmap**(1) and **newgidmap**(1) executables.
-
-Note: RHEL7 and Centos 7 will not have this feature until RHEL7.7 is released.
 
 In order for users to run rootless, there must be an entry for their username in _/etc/subuid_ and _/etc/subgid_ which lists the UIDs for their user namespace.
 

@@ -162,11 +162,33 @@ func ManifestAdd(w http.ResponseWriter, r *http.Request) {
 	// Wrapper to support 3.x with 4.x libpod
 	query := struct {
 		entities.ManifestAddOptions
-		Images []string
+		Images    []string
+		TLSVerify bool `schema:"tlsVerify"`
 	}{}
 	if err := json.NewDecoder(r.Body).Decode(&query); err != nil {
 		utils.Error(w, http.StatusInternalServerError, errors.Wrap(err, "Decode()"))
 		return
+	}
+
+	authconf, authfile, err := auth.GetCredentials(r)
+	if err != nil {
+		utils.Error(w, http.StatusBadRequest, err)
+		return
+	}
+	defer auth.RemoveAuthfile(authfile)
+	var username, password string
+	if authconf != nil {
+		username = authconf.Username
+		password = authconf.Password
+	}
+	query.ManifestAddOptions.Authfile = authfile
+	query.ManifestAddOptions.Username = username
+	query.ManifestAddOptions.Password = password
+	if sys := runtime.SystemContext(); sys != nil {
+		query.ManifestAddOptions.CertDir = sys.DockerCertPath
+	}
+	if _, found := r.URL.Query()["tlsVerify"]; found {
+		query.SkipTLSVerify = types.NewOptionalBool(!query.TLSVerify)
 	}
 
 	name := utils.GetName(r)
@@ -271,7 +293,7 @@ func ManifestPushV3(w http.ResponseWriter, r *http.Request) {
 		utils.Error(w, http.StatusBadRequest, errors.Wrapf(err, "error pushing image %q", query.Destination))
 		return
 	}
-	utils.WriteResponse(w, http.StatusOK, digest)
+	utils.WriteResponse(w, http.StatusOK, handlers.IDResponse{ID: digest})
 }
 
 // ManifestPush push image to registry
@@ -350,6 +372,24 @@ func ManifestModify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authconf, authfile, err := auth.GetCredentials(r)
+	if err != nil {
+		utils.Error(w, http.StatusBadRequest, err)
+		return
+	}
+	defer auth.RemoveAuthfile(authfile)
+	var username, password string
+	if authconf != nil {
+		username = authconf.Username
+		password = authconf.Password
+	}
+	body.ManifestAddOptions.Authfile = authfile
+	body.ManifestAddOptions.Username = username
+	body.ManifestAddOptions.Password = password
+	if sys := runtime.SystemContext(); sys != nil {
+		body.ManifestAddOptions.CertDir = sys.DockerCertPath
+	}
+
 	var report entities.ManifestModifyReport
 	switch {
 	case strings.EqualFold("update", body.Operation):
@@ -401,7 +441,7 @@ func ManifestModify(w http.ResponseWriter, r *http.Request) {
 	case len(report.Errors) > 0 && len(report.Images) > 0:
 		statusCode = http.StatusConflict
 	case len(report.Errors) > 0:
-		statusCode = http.StatusInternalServerError
+		statusCode = http.StatusBadRequest
 	}
 	utils.WriteResponse(w, statusCode, report)
 }
